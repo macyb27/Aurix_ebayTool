@@ -1,0 +1,261 @@
+openapi: 3.0.3
+info:
+  title: eBay Auto-Listing - Listing Service API
+  description: API für Listing-Erstellung, -Bearbeitung und -Workflow
+  version: 1.0.0
+  contact:
+    name: Architecture Team
+
+servers:
+  - url: https://api.ebay-tool.com/v1
+    description: Production
+
+security:
+  - bearerAuth: []
+  - tenantHeader: []
+
+tags:
+  - name: Listings
+    description: Listing CRUD und Workflow
+  - name: Templates
+    description: Listing-Templates
+
+paths:
+  /listings:
+    get:
+      tags: [Listings]
+      summary: Listings abrufen
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: perPage
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+        - name: status
+          in: query
+          schema: { type: string, enum: [draft, approved, published, failed] }
+      responses:
+        '200':
+          description: Paginierte Liste
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListingListResponse'
+    post:
+      tags: [Listings]
+      summary: Neues Listing (Draft) erstellen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateListingRequest'
+      responses:
+        '201':
+          description: Listing erstellt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListingResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /listings/{listingId}:
+    parameters:
+      - $ref: '#/components/parameters/listingId'
+    get:
+      tags: [Listings]
+      summary: Listing abrufen
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListingResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Listings]
+      summary: Listing aktualisieren
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateListingRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListingResponse'
+
+  /listings/{listingId}/generate-ai:
+    post:
+      tags: [Listings]
+      summary: AI-Generierung für Listing anstoßen
+      parameters:
+        - $ref: '#/components/parameters/listingId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fields:
+                  type: array
+                  items: { enum: [title, description, category, tags] }
+                productId:
+                  type: string
+                  format: uuid
+      responses:
+        '202':
+          description: Job akzeptiert
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId: { type: string, format: uuid }
+                  status: { enum: [pending] }
+                  estimatedCompletion: { type: string, format: date-time }
+
+  /listings/{listingId}/approve:
+    post:
+      tags: [Listings]
+      summary: Listing zur Veröffentlichung freigeben
+      parameters:
+        - $ref: '#/components/parameters/listingId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListingResponse'
+        '400':
+          description: Validierung fehlgeschlagen
+
+  /listings/{listingId}/publish:
+    post:
+      tags: [Listings]
+      summary: Listing bei eBay veröffentlichen
+      parameters:
+        - $ref: '#/components/parameters/listingId'
+      responses:
+        '202':
+          description: Publish gestartet
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { enum: [publishing] }
+                  syncJobId: { type: string, format: uuid }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    tenantHeader:
+      type: apiKey
+      in: header
+      name: X-Tenant-Id
+
+  parameters:
+    listingId:
+      name: listingId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  schemas:
+    CreateListingRequest:
+      type: object
+      required: [productId, title, description, price, quantity, categoryId, condition]
+      properties:
+        productId: { type: string, format: uuid }
+        templateId: { type: string, format: uuid }
+        title: { type: string, minLength: 10, maxLength: 80 }
+        description: { type: string }
+        price: { type: number, minimum: 0 }
+        quantity: { type: integer, minimum: 1 }
+        categoryId: { type: string }
+        condition: { enum: [new, used, refurbished] }
+        images: { type: array, items: { type: string, format: uri } }
+        duration: { enum: [GTC, Days_3, Days_5, Days_7] }
+        paymentMethods: { type: array, items: { type: string } }
+        shippingOptions:
+          type: array
+          items:
+            type: object
+            properties:
+              type: { type: string }
+              cost: { type: number }
+              domesticOnly: { type: boolean }
+
+    UpdateListingRequest:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        price: { type: number }
+        quantity: { type: integer }
+        images: { type: array }
+
+    ListingResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string }
+        productId: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        price: { type: number }
+        quantity: { type: integer }
+        workflow:
+          type: object
+          properties:
+            currentStep: { type: string }
+            nextSteps: { type: array, items: { type: string } }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    ListingListResponse:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/ListingResponse' } }
+        meta:
+          type: object
+          properties:
+            page: { type: integer }
+            perPage: { type: integer }
+            total: { type: integer }
+            totalPages: { type: integer }
+        links:
+          type: object
+          properties:
+            self: { type: string }
+            next: { type: string }
+            prev: { type: string }
+
+  responses:
+    ValidationError:
+      description: Validierungsfehler
+      content:
+        application/json:
+          schema:
+            $ref: 'https://api.ebay-tool.com/schemas/error.json'
+    NotFound:
+      description: Ressource nicht gefunden
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              type: { type: string }
+              title: { type: string }
+              status: { type: integer, example: 404 }
+              detail: { type: string }
