@@ -26,6 +26,11 @@ class VisionResult(BaseModel):
     brand: Optional[str] = Field(None, max_length=200)
     confidence: float = Field(..., ge=0, le=1, description="Konfidenz 0–1")
 
+    @field_validator("estimated_price", mode="before")
+    @classmethod
+    def coerce_estimated_price(cls, v: Any) -> Decimal | None:
+        return _coerce_decimal(v) if v is not None else None
+
 
 class MarketResult(BaseModel):
     """Ergebnis der Marktanalyse."""
@@ -39,6 +44,11 @@ class MarketResult(BaseModel):
     active_listings: Optional[int] = Field(None, ge=0)
     demand_score: Optional[float] = Field(None, ge=0, le=100, description="0–100")
     confidence: float = Field(..., ge=0, le=1, description="Konfidenz 0–1")
+
+    @field_validator("avg_sold_price", mode="before")
+    @classmethod
+    def coerce_avg_sold_price(cls, v: Any) -> Decimal | None:
+        return _coerce_decimal(v) if v is not None else None
 
 
 class PricingResult(BaseModel):

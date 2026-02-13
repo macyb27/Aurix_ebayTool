@@ -12,6 +12,7 @@ from app.core.exceptions import (
     AurixError,
     EbayApiError,
     EbayTokenError,
+    ValidationError,
     VisionServiceError,
 )
 
@@ -62,6 +63,17 @@ async def ebay_token_error_handler(request: Request, exc: EbayTokenError):
     return JSONResponse(
         status_code=401,
         content={"detail": str(exc), "type": "ebay_token_error"},
+    )
+
+
+@app.exception_handler(ValidationError)
+async def validation_error_handler(request: Request, exc: ValidationError):
+    """Validierungsfehler (z.B. FullAIResult)."""
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        status_code=422,
+        content={"detail": str(exc), "type": "validation_error"},
     )
 
 
