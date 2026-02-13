@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from aurix_agent.models import (
-    ListingAnalysisResult,
+    FullAIResult,
     MarketResult,
     PricingResult,
     VisionResult,
@@ -36,7 +36,6 @@ class TestVisionService:
             svc = VisionService()
             result = svc.analyze([path])
             assert result.confidence == 0.0
-            assert "API" in str(result.warnings)
         finally:
             Path(path).unlink(missing_ok=True)
 
@@ -44,7 +43,6 @@ class TestVisionService:
         svc = VisionService()
         result = svc.analyze([])
         assert result.confidence == 0.0
-        assert result.warnings
 
 
 class TestMarketService:
@@ -58,7 +56,7 @@ class TestMarketService:
 
 class TestPricingService:
     def test_fixed_strategy_low_demand(self):
-        market = MarketResult(median_price=100, q1=80, q3=120, demand_score=30, sample_count=25)
+        market = MarketResult(median_price=100, q1=80, q3=120, demand_score=30)
         vision = VisionResult(confidence=0.8, condition="Gebraucht - Gut")
         svc = PricingService()
         result = svc.analyze(market, vision)
@@ -107,12 +105,11 @@ class TestOrchestrator:
         try:
             orch = ListingOrchestrator(use_ebay_sandbox=True)
             result = orch.analyze([path], market_query="Test Produkt")
-            assert isinstance(result, ListingAnalysisResult)
+            assert isinstance(result, FullAIResult)
             assert result.vision
             assert result.market
             assert result.pricing
             assert result.listing
-            assert result.meta
             json_str = result.model_dump_json()
             assert "vision" in json_str
             assert "market" in json_str

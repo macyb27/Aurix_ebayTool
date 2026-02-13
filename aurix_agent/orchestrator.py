@@ -2,14 +2,12 @@
 ListingOrchestrator - Führt alle Services zusammen und liefert einheitliches JSON
 """
 
-import json
 import logging
 from pathlib import Path
 from typing import Any
 
 from aurix_agent.models import (
-    ListingAnalysisResult,
-    ListingResult,
+    FullAIResult,
     MarketResult,
     PricingResult,
     VisionResult,
@@ -45,7 +43,7 @@ class ListingOrchestrator:
         image_paths: list[str | Path],
         openai_api_key: str | None = None,
         market_query: str | None = None,
-    ) -> ListingAnalysisResult:
+    ) -> FullAIResult:
         """
         Führt vollständige Listing-Analyse durch.
 
@@ -55,7 +53,7 @@ class ListingOrchestrator:
             market_query: Optionaler Suchbegriff für Marktanalyse (sonst aus Vision)
 
         Returns:
-            ListingAnalysisResult mit vision, market, pricing, listing
+            FullAIResult mit vision, market, pricing, listing
         """
         # 1. Vision
         vision = self.vision.analyze(
@@ -74,45 +72,18 @@ class ListingOrchestrator:
         # 3. Pricing
         pricing = self.pricing.analyze(market=market, vision=vision)
 
-        # 4. Listing
         listing = self.listing.generate(
             vision=vision,
             market=market,
             pricing=pricing,
         )
 
-        # Meta: Confidence, Warnungen, Hinweise
-        meta = self._build_meta(vision, market, pricing, listing)
-
-        return ListingAnalysisResult(
+        return FullAIResult(
             vision=vision,
             market=market,
             pricing=pricing,
             listing=listing,
-            meta=meta,
         )
-
-    def _build_meta(
-        self,
-        vision: VisionResult,
-        market: MarketResult,
-        pricing: PricingResult,
-        listing: ListingResult,
-    ) -> dict[str, Any]:
-        all_warnings = (
-            vision.warnings
-            + market.warnings
-            + pricing.warnings
-            + listing.warnings
-        )
-        return {
-            "overall_confidence": vision.confidence,
-            "warnings": all_warnings,
-            "hints": [
-                "Manuelle Prüfung empfohlen bei Confidence < 0.6",
-                "Item Specifics ggf. an eBay-Kategorie anpassen",
-            ],
-        }
 
     def analyze_to_json(
         self,
@@ -123,7 +94,7 @@ class ListingOrchestrator:
         Wie analyze(), gibt aber JSON-String zurück.
         """
         result = self.analyze(image_paths=image_paths, **kwargs)
-        return result.model_dump_json(indent=2, exclude_none=True)
+        return result.model_dump_json(indent=2)
 
 
 def run_analysis(

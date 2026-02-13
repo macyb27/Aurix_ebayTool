@@ -16,25 +16,16 @@ from aurix_agent.models import VisionResult
 
 logger = logging.getLogger(__name__)
 
-MIN_CONFIDENCE_THRESHOLD = 0.6
-
-VISION_SYSTEM_PROMPT = """Du bist ein Experte für die Analyse von eBay-Listings. Analysiere die bereitgestellten Produktbilder und extrahiere strukturierte Informationen.
-
-Antworte NUR mit einem gültigen JSON-Objekt in folgendem Format (keine zusätzlichen Erklärungen):
+VISION_SYSTEM_PROMPT = """Antworte NUR mit gültigem JSON. Keine Kommentare.
 {
-  "product_name": "Vollständiger Produktname",
-  "brand": "Markenname oder 'Unbekannt'",
-  "model": "Modellbezeichnung oder 'Unbekannt'",
-  "category": "eBay-Kategorie (z.B. Consumer Electronics > Cell Phones)",
-  "condition": "Neu | Gebraucht - Sehr gut | Gebraucht - Gut | Gebraucht - Akzeptabel | Refurbished",
-  "confidence": 0.0-1.0
+  "product_name": "string",
+  "brand": "string",
+  "model": "string",
+  "category": "string",
+  "condition": "Neu|Gebraucht - Sehr gut|Gebraucht - Gut|Gebraucht - Akzeptabel|Refurbished",
+  "confidence": 0.0
 }
-
-Regeln:
-- confidence: Schätze deine Zuversicht (0.0-1.0) basierend auf Bildqualität und Erkennbarkeit
-- Bei unscharfen oder mehrdeutigen Bildern: confidence < 0.6
-- category: Nutze eBay-typische Kategoriebezeichnungen
-- condition: Wähle die passendste Option basierend auf sichtbaren Gebrauchsspuren"""
+confidence: 0.0-0.5 wenn unsicher/mehrdeutig/unscharf, 0.5-1.0 wenn sicher."""
 
 
 class VisionService:
@@ -59,10 +50,7 @@ class VisionService:
             VisionResult mit Produktinfos und Confidence
         """
         if not image_paths or len(image_paths) > 3:
-            return VisionResult(
-                warnings=["Es müssen 1-3 Bilder bereitgestellt werden."],
-                confidence=0.0,
-            )
+            return VisionResult(confidence=0.0)
 
         client = self._client
         if api_key:
@@ -85,10 +73,7 @@ class VisionService:
             return self._parse_response(text, image_paths)
         except Exception as e:
             logger.exception("Vision API Fehler: %s", e)
-            return VisionResult(
-                warnings=[f"Vision-Analyse fehlgeschlagen: {str(e)}"],
-                confidence=0.0,
-            )
+            return VisionResult(confidence=0.0)
 
     def _build_content(self, image_paths: list[Union[str, Path]]) -> list:
         content = []
@@ -120,19 +105,14 @@ class VisionService:
 
         try:
             data = json.loads(text)
-        except json.JSONDecodeError as e:
-            return VisionResult(
-                warnings=[f"Ungültige JSON-Antwort: {e}"],
-                confidence=0.0,
-            )
+        except json.JSONDecodeError:
+            return VisionResult(confidence=0.0)
 
-        warnings = []
         confidence = float(data.get("confidence", 0.0))
-        if confidence < MIN_CONFIDENCE_THRESHOLD:
-            warnings.append(
-                f"Confidence {confidence:.2f} unter Schwellwert {MIN_CONFIDENCE_THRESHOLD}. "
-                "Manuelle Prüfung empfohlen."
-            )
+        if confidence > 0.5 and (
+            not data.get("product_name") or not data.get("brand") or data.get("brand") == "Unbekannt"
+        ):
+            confidence = min(confidence, 0.5)
 
         try:
             return VisionResult(
@@ -141,23 +121,17 @@ class VisionService:
                 model=str(data.get("model", "")),
                 category=str(data.get("category", "")),
                 condition=str(data.get("condition", "")),
-                confidence=confidence,
-                warnings=warnings,
+                confidence=min(1.0, max(0.0, confidence)),
             )
-        except ValidationError as e:
-            return VisionResult(
-                warnings=[f"Validierungsfehler: {e}"],
-                confidence=0.0,
-            )
+        except ValidationError:
+            return VisionResult(confidence=0.0)
 
     def _fallback_result(self, image_paths: list) -> VisionResult:
-        """Fallback wenn keine API verfügbar."""
         return VisionResult(
-            product_name="Unbekannt (kein API-Key)",
-            brand="Unbekannt",
-            model="Unbekannt",
-            category="Unbekannt",
+            product_name="",
+            brand="",
+            model="",
+            category="",
             condition="Gebraucht - Gut",
             confidence=0.0,
-            warnings=["Vision API nicht konfiguriert. OPENAI_API_KEY setzen."],
         )

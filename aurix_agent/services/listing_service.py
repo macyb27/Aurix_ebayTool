@@ -5,8 +5,6 @@ Erstellt Titel, Untertitel, HTML-Beschreibung und Item Specifics.
 
 import html
 import logging
-import re
-from typing import Any
 
 from aurix_agent.models import ListingResult, MarketResult, PricingResult, VisionResult
 
@@ -36,7 +34,6 @@ class ListingService:
         Returns:
             ListingResult mit title, subtitle, description_html, item_specifics
         """
-        warnings = []
         product = vision.product_name or "Produkt"
         brand = vision.brand or "Unbekannt"
         model = vision.model or ""
@@ -47,7 +44,6 @@ class ListingService:
         title = self._build_title(product, brand, model, condition)
         if len(title) > MAX_TITLE_LENGTH:
             title = title[: MAX_TITLE_LENGTH - 3] + "..."
-            warnings.append(f"Titel auf {MAX_TITLE_LENGTH} Zeichen gekürzt.")
         title = title.strip()
 
         # Untertitel: Zusatzinfo, Preis-Hinweis
@@ -74,18 +70,11 @@ class ListingService:
             category=category,
         )
 
-        keywords = self._extract_keywords(product, brand, model, category)
-
-        if vision.confidence < 0.6:
-            warnings.append("Listing basiert auf unsicherer Bildanalyse. Prüfen.")
-
         return ListingResult(
             title=title,
             subtitle=subtitle,
             description_html=description_html,
             item_specifics=item_specifics,
-            keywords=keywords,
-            warnings=warnings,
         )
 
     def _build_title(self, product: str, brand: str, model: str, condition: str) -> str:
@@ -146,13 +135,3 @@ class ListingService:
         if category:
             specifics["Kategorie"] = category
         return specifics
-
-    def _extract_keywords(
-        self,
-        product: str,
-        brand: str,
-        model: str,
-        category: str,
-    ) -> list[str]:
-        words = re.findall(r"\w+", f"{product} {brand} {model} {category}".lower())
-        return list(dict.fromkeys(w for w in words if len(w) > 2))[:15]

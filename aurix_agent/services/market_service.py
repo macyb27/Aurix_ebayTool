@@ -74,7 +74,7 @@ class MarketService:
         """
         search_query = query or (vision.product_name if vision else "")
         if not search_query:
-            return MarketResult(warnings=["Kein Suchbegriff verfügbar."])
+            return MarketResult()
 
         if self._client_id:
             return self._fetch_ebay(search_query, category, limit)
@@ -148,7 +148,7 @@ class MarketService:
             base_price * (0.7 + random.random() * 0.6)
             for _ in range(n)
         ]
-        if vision and vision.confidence >= 0.6:
+        if vision and vision.confidence > 0.5:
             if "phone" in vision.category.lower() or "handy" in vision.category.lower():
                 base_price = 200.0 + hash(query) % 400
                 prices = [base_price * (0.8 + random.random() * 0.4) for _ in range(n)]
@@ -156,24 +156,17 @@ class MarketService:
 
     def _compute_statistics(self, prices: list[float]) -> MarketResult:
         if not prices:
-            return MarketResult(
-                warnings=["Keine Verkaufspreise gefunden."],
-            )
+            return MarketResult()
         median = _percentile(prices, 0.5)
         q1 = _percentile(prices, 0.25)
         q3 = _percentile(prices, 0.75)
         demand = _demand_score(prices, median)
-        warnings = []
-        if demand < 30:
-            warnings.append("Niedriger Demand Score. Markt prüfen.")
         try:
             return MarketResult(
                 median_price=round(median, 2),
                 q1=round(q1, 2),
                 q3=round(q3, 2),
                 demand_score=demand,
-                sample_count=len(prices),
-                warnings=warnings,
             )
-        except ValidationError as e:
-            return MarketResult(warnings=[str(e)])
+        except ValidationError:
+            return MarketResult()
