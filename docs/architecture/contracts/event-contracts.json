@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Aurix Event Contracts",
+  "version": "1.0.0",
+  "description": "Event-Payload-Schemas für Message Broker",
+  "definitions": {
+    "EventEnvelope": {
+      "type": "object",
+      "required": ["eventId", "eventType", "timestamp", "source", "payload"],
+      "properties": {
+        "eventId": { "type": "string", "format": "uuid" },
+        "eventType": { "type": "string" },
+        "eventVersion": { "type": "string", "default": "1.0" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "source": { "type": "string" },
+        "tenantId": { "type": "string", "format": "uuid" },
+        "userId": { "type": "string", "format": "uuid" },
+        "correlationId": { "type": "string", "format": "uuid" },
+        "payload": { "type": "object" },
+        "metadata": { "type": "object" }
+      }
+    },
+    "ListingCreatedPayload": {
+      "type": "object",
+      "required": ["listingId", "tenantId", "userId", "status"],
+      "properties": {
+        "listingId": { "type": "string", "format": "uuid" },
+        "tenantId": { "type": "string", "format": "uuid" },
+        "userId": { "type": "string", "format": "uuid" },
+        "status": { "type": "string", "enum": ["draft"] },
+        "vehicleMake": { "type": "string" },
+        "vehicleModel": { "type": "string" },
+        "hasDescription": { "type": "boolean" }
+      }
+    },
+    "ListingPublishRequestedPayload": {
+      "type": "object",
+      "required": ["listingId", "ebayAccountId"],
+      "properties": {
+        "listingId": { "type": "string", "format": "uuid" },
+        "ebayAccountId": { "type": "string", "format": "uuid" },
+        "duration": { "type": "string", "enum": ["GTC", "DAYS_7", "DAYS_30"] },
+        "scheduledStartTime": { "type": "string", "format": "date-time" }
+      }
+    },
+    "AiDescriptionRequestedPayload": {
+      "type": "object",
+      "required": ["jobId", "listingId", "vehicleData"],
+      "properties": {
+        "jobId": { "type": "string", "format": "uuid" },
+        "listingId": { "type": "string", "format": "uuid" },
+        "vehicleData": { "type": "object" },
+        "language": { "type": "string", "default": "de" }
+      }
+    },
+    "AiDescriptionReadyPayload": {
+      "type": "object",
+      "required": ["jobId", "listingId"],
+      "properties": {
+        "jobId": { "type": "string", "format": "uuid" },
+        "listingId": { "type": "string", "format": "uuid" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "keywords": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "EbaySyncCompletedPayload": {
+      "type": "object",
+      "required": ["listingId", "ebayItemId", "status"],
+      "properties": {
+        "listingId": { "type": "string", "format": "uuid" },
+        "ebayItemId": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "ended"] },
+        "url": { "type": "string", "format": "uri" }
+      }
+    },
+    "EbaySyncFailedPayload": {
+      "type": "object",
+      "required": ["listingId", "errorCode", "errorMessage"],
+      "properties": {
+        "listingId": { "type": "string", "format": "uuid" },
+        "errorCode": { "type": "string" },
+        "errorMessage": { "type": "string" },
+        "retryable": { "type": "boolean" }
+      }
+    }
+  }
+}

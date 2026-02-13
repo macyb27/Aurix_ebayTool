@@ -1,0 +1,30 @@
+%% Flow: Listing auf eBay veröffentlichen
+%% Render with Mermaid
+
+sequenceDiagram
+    participant U as User
+    participant LS as Listing Service
+    participant MQ as Message Broker
+    participant ES as eBay Integration
+    participant NS as Notification Service
+
+    U->>LS: POST /listings/{id}/publish
+    LS->>LS: Validate, Set status=publishing
+    LS->>MQ: listing.publish.requested
+    LS->>U: 202 Accepted
+
+    MQ->>ES: Consume event
+    ES->>ES: Get eBay credentials
+    ES->>ES: Call eBay API (AddItem)
+    
+    alt Success
+        ES->>MQ: ebay.sync.completed
+        MQ->>LS: Update listing (ebay_item_id)
+        MQ->>NS: listing.published
+        NS->>U: E-Mail: "Listing live"
+    else Failure
+        ES->>MQ: ebay.sync.failed
+        MQ->>LS: Set status=failed
+        MQ->>NS: sync.failed
+        NS->>U: E-Mail: "Fehler bei Veröffentlichung"
+    end
