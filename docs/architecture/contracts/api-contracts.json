@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Aurix eBay Auto-Listing API Contracts",
+  "version": "1.0.0",
+  "definitions": {
+    "Vehicle": {
+      "type": "object",
+      "required": ["make", "model", "year"],
+      "properties": {
+        "make": { "type": "string", "example": "BMW" },
+        "model": { "type": "string", "example": "320d" },
+        "year": { "type": "integer", "minimum": 1900, "maximum": 2030 },
+        "mileage": { "type": "integer", "minimum": 0 },
+        "fuelType": { "type": "string", "enum": ["petrol", "diesel", "electric", "hybrid", "lpg", "other"] },
+        "transmission": { "type": "string", "enum": ["manual", "automatic", "semi-automatic"] },
+        "condition": { "type": "string", "enum": ["new", "used", "refurbished"] },
+        "vin": { "type": "string", "pattern": "^[A-HJ-NPR-Z0-9]{17}$" },
+        "customAttributes": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "Price": {
+      "type": "object",
+      "required": ["amount", "currency"],
+      "properties": {
+        "amount": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string", "default": "EUR" }
+      }
+    },
+    "CreateListingRequest": {
+      "type": "object",
+      "required": ["vehicle"],
+      "properties": {
+        "templateId": { "type": "string", "format": "uuid" },
+        "vehicle": { "$ref": "#/definitions/Vehicle" },
+        "title": { "type": "string", "maxLength": 80 },
+        "description": { "type": "string", "maxLength": 4000 },
+        "price": { "$ref": "#/definitions/Price" },
+        "mediaIds": { "type": "array", "items": { "type": "string", "format": "uuid" } },
+        "categoryId": { "type": "string" }
+      }
+    },
+    "ListingResponse": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "tenantId": { "type": "string", "format": "uuid" },
+        "userId": { "type": "string", "format": "uuid" },
+        "status": { "type": "string", "enum": ["draft", "pending_review", "publishing", "active", "sold", "ended", "failed"] },
+        "vehicle": { "$ref": "#/definitions/Vehicle" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "$ref": "#/definitions/Price" },
+        "mediaIds": { "type": "array", "items": { "type": "string", "format": "uuid" } },
+        "ebayItemId": { "type": "string" },
+        "ebayUrl": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "EventEnvelope": {
+      "type": "object",
+      "required": ["eventId", "eventType", "timestamp", "source", "payload"],
+      "properties": {
+        "eventId": { "type": "string", "format": "uuid" },
+        "eventType": { "type": "string" },
+        "eventVersion": { "type": "string", "default": "1.0" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "source": { "type": "string" },
+        "tenantId": { "type": "string", "format": "uuid" },
+        "userId": { "type": "string", "format": "uuid" },
+        "correlationId": { "type": "string", "format": "uuid" },
+        "payload": { "type": "object" },
+        "metadata": { "type": "object" }
+      }
+    },
+    "ApiError": {
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "details": { "type": "object" }
+      }
+    }
+  }
+}

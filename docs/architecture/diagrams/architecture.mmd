@@ -1,0 +1,73 @@
+%% eBay Auto-Listing Tool - C4 Architecture Diagram
+%% Render with Mermaid (e.g. mermaid.live, VS Code Mermaid extension)
+
+flowchart TB
+    subgraph Client["Client Layer"]
+        WebApp[Web App\nNext.js]
+        Mobile[Mobile App\nOptional]
+        APIClient[API Clients]
+    end
+
+    subgraph Gateway["API Gateway"]
+        APIGW[Kong / Traefik\nAuth, Rate Limit, Routing]
+    end
+
+    subgraph Services["Application Layer"]
+        UserSvc[User Service]
+        ListingSvc[Listing Service]
+        EbaySvc[eBay Integration]
+        AISvc[AI/ML Service]
+        BillingSvc[Billing Service]
+        NotifSvc[Notification Service]
+        MediaSvc[Media Service]
+    end
+
+    subgraph Broker["Message Broker"]
+        MQ[RabbitMQ / Kafka]
+    end
+
+    subgraph Data["Data Layer"]
+        PG[(PostgreSQL)]
+        Redis[(Redis)]
+        S3[(S3 / MinIO)]
+        VectorDB[(Vector DB)]
+        EbayAPI[eBay API\nExternal]
+    end
+
+    WebApp --> APIGW
+    Mobile --> APIGW
+    APIClient --> APIGW
+
+    APIGW --> UserSvc
+    APIGW --> ListingSvc
+    APIGW --> EbaySvc
+    APIGW --> BillingSvc
+    APIGW --> MediaSvc
+
+    UserSvc --> PG
+    UserSvc --> Redis
+    ListingSvc --> PG
+    ListingSvc --> Redis
+    ListingSvc --> MQ
+    EbaySvc --> PG
+    EbaySvc --> Redis
+    EbaySvc --> EbayAPI
+    EbaySvc --> MQ
+    AISvc --> PG
+    AISvc --> VectorDB
+    AISvc --> S3
+    AISvc --> MQ
+    BillingSvc --> PG
+    BillingSvc --> Redis
+    BillingSvc --> MQ
+    NotifSvc --> PG
+    NotifSvc --> MQ
+    MediaSvc --> PG
+    MediaSvc --> S3
+    MediaSvc --> Redis
+
+    MQ -.-> ListingSvc
+    MQ -.-> EbaySvc
+    MQ -.-> AISvc
+    MQ -.-> BillingSvc
+    MQ -.-> NotifSvc
