@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api.ebay-tool.com/events/listing",
+  "title": "Listing Service Events",
+  "description": "CloudEvents 1.0 Schema für Listing-bezogene Events",
+  "definitions": {
+    "CloudEventBase": {
+      "type": "object",
+      "required": ["specversion", "type", "source", "id", "time", "datacontenttype", "data"],
+      "properties": {
+        "specversion": { "const": "1.0" },
+        "type": { "type": "string" },
+        "source": { "const": "listing-service" },
+        "id": { "type": "string", "format": "uuid" },
+        "time": { "type": "string", "format": "date-time" },
+        "datacontenttype": { "const": "application/json" },
+        "dataschema": { "type": "string", "format": "uri" },
+        "subject": { "type": "string" },
+        "data": { "type": "object" }
+      }
+    },
+    "ListingDraftCreatedData": {
+      "type": "object",
+      "required": ["listingId", "tenantId", "productId"],
+      "properties": {
+        "listingId": { "type": "string", "format": "uuid" },
+        "tenantId": { "type": "string", "format": "uuid" },
+        "productId": { "type": "string", "format": "uuid" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string", "format": "uri" } },
+        "requestedFields": {
+          "type": "array",
+          "items": { "enum": ["title", "description", "category", "tags"] }
+        }
+      }
+    },
+    "ListingApprovedData": {
+      "type": "object",
+      "required": ["listingId", "tenantId", "listingPayload"],
+      "properties": {
+        "listingId": { "type": "string", "format": "uuid" },
+        "tenantId": { "type": "string", "format": "uuid" },
+        "ebayAccountId": { "type": "string", "format": "uuid" },
+        "listingPayload": {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" },
+            "description": { "type": "string" },
+            "price": { "type": "number" },
+            "quantity": { "type": "integer" },
+            "categoryId": { "type": "string" },
+            "condition": { "type": "string" },
+            "images": { "type": "array" },
+            "duration": { "type": "string" },
+            "paymentMethods": { "type": "array" },
+            "shippingOptions": { "type": "array" }
+          }
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "listing.draft.created" },
+        "data": { "$ref": "#/definitions/ListingDraftCreatedData" }
+      }
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "listing.approved" },
+        "data": { "$ref": "#/definitions/ListingApprovedData" }
+      }
+    }
+  ]
+}
