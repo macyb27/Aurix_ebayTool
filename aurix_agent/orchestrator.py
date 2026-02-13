@@ -78,11 +78,20 @@ class ListingOrchestrator:
             pricing=pricing,
         )
 
+        warnings: list[str] = []
+        if vision.confidence < 0.5:
+            warnings.append("Vision confidence < 0.5")
+        if market.median_price <= 0:
+            warnings.append("Keine Marktdaten")
+        if market.demand_score < 30 and market.median_price > 0:
+            warnings.append("Niedriger Demand Score")
+
         return FullAIResult(
             vision=vision,
             market=market,
             pricing=pricing,
             listing=listing,
+            warnings=warnings,
         )
 
     def analyze_to_json(

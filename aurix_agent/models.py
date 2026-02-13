@@ -40,6 +40,7 @@ class FullAIResult(BaseModel):
     market: MarketResult
     pricing: PricingResult
     listing: ListingResult
+    warnings: list[str] = Field(default_factory=list)
 
 
 ListingAnalysisResult = FullAIResult
